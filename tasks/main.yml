@@ -1,0 +1,21 @@
+---
+- name: "ensure template bucket exists"
+  s3:
+    bucket: "{{cloudformation_bucket}}-{{cloudformation_region}}"
+    mode: "create"
+    region: "{{cloudformation_region}}"
+- name: "upload cloudformation template"
+  s3:
+    bucket: "{{cloudformation_bucket}}-{{cloudformation_region}}"
+    mode: "put"
+    object: "/{{cloudformation_template|basename}}"
+    src: "{{cloudformation_template}}"
+    region: "{{cloudformation_region}}"
+- name: "create template {{cloudformation_stack}}"
+  cloudformation:
+    disable_rollback: "{{cloudformation_disable_rollback}}"
+    region: "{{cloudformation_region}}"
+    stack_name: "{{cloudformation_stack}}"
+    state: "present"
+    template: "{{cloudformation_template}}"
+    template_parameters: "{{cloudformation_parameters}}"
