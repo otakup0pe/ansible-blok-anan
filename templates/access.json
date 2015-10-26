@@ -1,0 +1,85 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Access controls for an World Wide Web Site",
+  "Parameters": {
+    "DomainName": {
+      "Description": "The top-level domain to use for the World Wide Web Site",
+      "Type": "String"
+    },
+    "DomainPrefix": {
+      "Description": "Prefix subdomain to be used by the World Wide Web Site",
+      "Type": "String",
+      "Default": ""
+    },
+    "PublicAccess": {
+      "Description": "Whether or not this World Wide Web Site is publically accessible",
+      "Type": "String",
+      "Default": "no",
+      "AllowedValues": [ "yes", "no" ]
+    }
+  },
+  "Conditions": {
+    "TopLevel": { "Fn::Equals": [{"Ref":"DomainPrefix"}, ""]},
+    "SubDomain": { "Fn::Not": [ { "Condition": "TopLevel" } ] },
+    "IsPublic": { "Fn::Equals": [{"Ref":"PublicAccess"}, "yes"]},
+    "IsNotPublic": { "Fn::Not": [ {"Condition": "IsPublic"}]}
+  },
+  "Resources": {
+    "OpenAccess": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket":  { "Fn::If": [
+          "TopLevel",
+          {"Ref":"DomainName"},
+          { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}]},
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "IPAllow",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": { "Fn::Join": [ "", ["arn:aws:s3:::", { "Fn::If": [
+                "TopLevel",
+                {"Ref":"DomainName"},
+                { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}]}, "/*"]]}
+            }
+          ]
+        }
+      },
+      "Condition": "IsPublic"
+    },
+    "RestrictedAccess": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket":  { "Fn::If": [
+          "TopLevel",
+          {"Ref": "DomainName"},
+          { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}]},
+        "PolicyDocument": {
+          "Statement": [
+            {% for ip in restrict_site_ips %}
+            {
+              "Sid": "IPAllow",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource":
+              { "Fn::Join": [ "", ["arn:aws:s3:::", { "Fn::If": [
+                "TopLevel",
+                {"Ref":"DomainName"},
+                { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}]}, "/*"]]},
+              "Condition": {
+                "IpAddress": {
+                  "aws:SourceIp": "{{ip}}/32"
+                }
+              }
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
+        }
+      } ,
+      "Condition": "IsNotPublic"
+    }      
+  }
+}

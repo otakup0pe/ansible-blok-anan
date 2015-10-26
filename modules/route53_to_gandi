@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+from ansible.module_utils.basic import *
+from ansible.module_utils.urls import *
+
+import boto.route53, xmlrpclib, os, sys
+from optparse import OptionParser
+
+def convert(opt):
+    zone_id = opt.get('zone_id', None)
+    aws_key = opt.get('aws_key', None)
+    aws_secret = opt.get('aws_secret', None)
+    gandi_key = opt.get('gandi_key', os.environ.get('gandi_key', None))
+
+    domain = opt['domain']
+
+    if aws_key and aws_secret:
+        route53 = boto.route53.connect_to_region('universal',
+                                                 aws_access_key=aws_key,
+                                                 aws_secret_access_key=aws_secret)
+    else:
+        route53 = boto.route53.connect_to_region('universal')
+
+    api = xmlrpclib.ServerProxy('https://rpc.gandi.net/xmlrpc/')
+
+    if zone_id:
+        zone = route53.get_hosted_zone(zone_id)
+    else:
+        zone = route53.get_hosted_zone_by_name(domain)
+
+    ns = []
+    for host in zone['GetHostedZoneResponse']['DelegationSet']['NameServers']:
+        ns.append(host.rstrip('.'))
+
+    api.domain.nameservers.set(gandi_key, domain, ns)
+
+
+def main():
+    mod = AnsibleModule(
+        argument_spec=dict(
+            gandi_key=dict(required=False, default=None),
+            zone_id=dict(required=False, default=None),
+            domain=dict(required=True),
+            aws_key=dict(required=False, default=None),
+            aws_secret=dict(required=False, default=None)
+        )
+    )
+
+    changed = convert(mod.params)
+
+    mod.exit_json(changed=changed)
+
+if __name__ == '__main__':
+    main()

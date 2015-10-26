@@ -1,0 +1,89 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "A Simple Tumblr Web Site",
+  "Parameters": {
+    "DomainName": {
+      "Description": "The top-level domain to use for the Tumblr Site",
+      "Type": "String"
+    },
+    "GoogleSiteVerificationCode": {
+      "Description": "The code provided to you by google for site verifications",
+      "Type": "String",
+      "Default": ""
+    },
+    "TTL": {
+      "Description": "The TTL to be used for Domains",
+      "Type": "Number",
+      "Default": 1800
+    },
+    "WWWAlias": {
+      "Description": "Whether or not to create a WWW alias for the Tumblr Site",
+      "Type": "String",
+      "AllowedValues": [ "yes", "no" ],
+      "Default": "no"
+    }
+  },
+  "Conditions": {
+    "WithWWW": { "Fn::Equals": [{"Ref":"WWWAlias"}, "yes"]},
+    "GSVCode": { "Fn::Not": [{ "Fn::Equals": [{"Ref":"GoogleSiteVerificationCode"}, ""]}] }
+  },
+  "Resources": {
+    "DatDomain": {
+      "Type": "AWS::Route53::HostedZone",
+      "Properties": {
+        "Name": {"Ref": "DomainName"}
+      }
+    },
+    "GSVRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "DatDomain" },
+        "Name": { "Fn::Join": [ ".", [{ "Ref": "DomainName" }, ""]]},
+        "Type": "TXT",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [{"Ref": "GoogleSiteVerificationCode"}]
+      },
+      "Condition": "GSVCode"
+    },
+    "TumblrRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "DatDomain" },
+        "Name": { "Fn::Join": [".", [{"Ref": "DomainName"}, ""]]},
+        "Type": "A",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [ "66.6.44.4" ]
+      }
+    },
+    "WWWBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Fn::Join": [".", ["www", {"Ref":"DomainName"}]]},
+        "WebsiteConfiguration": {
+          "RedirectAllRequestsTo": {
+            "HostName": {"Ref": "DomainName"}
+          }
+        },
+        "AccessControl": "PublicRead"
+      },
+      "Condition": "WithWWW"
+    },
+    "WWWRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "DatDomain" },
+        "Name": { "Fn::Join": [".", ["www", {"Ref":"DomainName"}, ""]]},
+        "Type": "CNAME",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [{ "Fn::Join": [".", [{"Ref":"DomainName"}, ""]]}]
+      },
+      "Condition": "WithWWW"
+    }
+  },
+  "Outputs": {
+    "ZoneId": {
+      "Description": "The Zone ID of the Created Zone",
+      "Value": {"Ref": "DatDomain"}
+    }
+  }
+}

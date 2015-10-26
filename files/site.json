@@ -1,0 +1,248 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Manifest an World Wide Web Site",
+  "Mappings": {
+    "RegionZones": {
+      "us-east-1": { "ZoneId": "Z3AQBSTGFYJSTF" },
+      "us-west-1": { "ZoneId": "Z2F56UZL2M1ACD" },
+      "us-west-2": { "ZoneId": "Z3BJ6K6RIION7M" },
+      "eu-central-1": { "ZoneId": "Z21DNDUVLTQW6Q" },
+      "ap-southeast-1": { "ZoneId": "Z3O0J2DXBE1FTB" }
+    }
+  },
+  "Parameters": {
+    "DomainName": {
+      "Description": "The top-level domain to use for the World Wide Web Site",
+      "Type": "String"
+    },
+    "DomainPrefix": {
+      "Description": "Prefix subdomain to be used by the World Wide Web Site",
+      "Type": "String",
+      "Default": ""
+    },
+    "CreateZone": {
+      "Description": "Either this must be set to Yes or the ZoneId must be set.",
+      "Type": "String",
+      "AllowedValues": ["yes", "no"],
+      "Default": "no"
+    },
+    "ZoneId": {
+      "Description": "The route53 DNS zone this World Wide Web Site is associated with. If CreateZone is 'yes' then this value is ignored.",
+      "Type": "String",
+      "Default": ""
+    },
+    "TumblrBlog": {
+      "Description": "Whether or not to create a blog alias to Tumblr for this World Wide Web Site",
+      "Type": "String",
+      "AllowedValues": [ "yes", "no" ],
+      "Default": "no"
+    },
+    "WWWAlias": {
+      "Description": "Whether or not to create a WWW alias for this World Wide Web Site",
+      "Type": "String",
+      "AllowedValues": [ "yes", "no" ],
+      "Default": "no"
+    },
+    "IndexPage": {
+      "Description": "The default page for this World Wide Web Site",
+      "Type": "String",
+      "Default": "index.html"
+    },
+    "ProblemPage": {
+      "Description": "The page used in error conditions on World Wide Web Site",
+      "Type": "String",
+      "Default": "problems.html"
+    },
+    "TTL": {
+      "Description": "The TTL to be used for the World Wide Web Site",
+      "Type": "Number",
+      "Default": 1800
+    },
+    "PublicAccess": {
+      "Description": "Whether or not this World Wide Web Site is publically accessible",
+      "Type": "String",
+      "Default": "no",
+      "AllowedValues": [ "yes", "no" ]
+    },
+    "GoogleSiteVerificationCode": {
+      "Description": "The code provided to you by google for site verifications",
+      "Type": "String",
+      "Default": ""
+    }
+  },
+  "Conditions": {
+    "WithWWW": { "Fn::Equals": [{"Ref":"WWWAlias"}, "yes"]},
+    "TopLevel": { "Fn::Equals": [{"Ref":"DomainPrefix"}, ""]},
+    "SubDomain": { "Fn::Not": [ { "Condition": "TopLevel" } ] },
+    "UseTumblr": { "Fn::Equals": [{"Ref": "TumblrBlog"}, "yes"]},
+    "IsPublic": { "Fn::Equals": [{"Ref":"PublicAccess"}, "yes"]},
+    "GSVCode": { "Fn::Not": [{ "Fn::Equals": [{"Ref":"GoogleSiteVerificationCode"}, ""]}] },
+    "CreateZone": { "Fn::Equals": [{"Ref":"CreateZone"}, "yes"]}
+  },
+  "Resources": {
+    "DatDomain": {
+      "Type": "AWS::Route53::HostedZone",
+      "Properties": {
+        "Name": {"Ref": "DomainName"}
+      },
+      "Condition": "CreateZone"
+    },
+    "TopBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {"Ref": "DomainName"},
+        "WebsiteConfiguration": {
+          "IndexDocument": { "Ref": "IndexPage" },
+          "ErrorDocument": { "Ref": "ProblemPage" }
+        },
+        "AccessControl": { "Fn::If": [
+          "IsPublic",
+          "PublicRead",
+          "BucketOwnerFullControl"
+        ]}
+      },
+      "Condition": "TopLevel"
+    },
+    "SubdomainBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Fn::Join": [ ".",
+          [ 
+            {"Ref": "DomainPrefix"},
+            {"Ref": "DomainName"}
+          ]]},
+        "WebsiteConfiguration": {
+          "IndexDocument": "index.html",
+          "ErrorDocument": "problems.html"
+        },
+        "AccessControl": { "Fn::If": [
+          "IsPublic",
+          "PublicRead",
+          "BucketOwnerFullControl"
+        ]}
+      },
+      "Condition": "SubDomain"
+    },
+    "WWWBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Fn::If": [
+          "TopLevel",
+          { "Fn::Join": [".", ["www", {"Ref":"DomainName"}]]},
+          { "Fn::Join": [".", ["www", {"Ref": "DomainPrefix"}, {"Ref":"DomainName"}]]}
+        ]},
+        "WebsiteConfiguration": {
+          "RedirectAllRequestsTo": {
+            "HostName": { "Fn::If": [
+              "TopLevel",
+              {"Ref": "DomainName"},
+              {"Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}
+            ]}
+          }
+        },
+        "AccessControl": "PublicRead"
+      },
+      "Condition": "WithWWW"
+    },
+    "TopRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Fn::If": [
+          "CreateZone",
+          {"Ref":"DatDomain"},
+          {"Ref": "ZoneId" }
+        ]},
+        "AliasTarget": {
+          "DNSName": {"Fn::Join": [".", ["s3-website", {"Ref":"AWS::Region"}, "amazonaws.com"]]},
+          "HostedZoneId": {"Fn::FindInMap": ["RegionZones", {"Ref":"AWS::Region"}, "ZoneId"]}
+        },
+        "Name": { "Fn::Join": ["", [{"Ref": "DomainName"}]]},
+        "Type": "A"
+      },
+      "Condition": "TopLevel"
+    },
+    "PrefixRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Fn::If": [
+          "CreateZone",
+          {"Ref":"DatDomain"},
+          {"Ref": "ZoneId" }
+        ]},
+        "Name": { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]},
+        "Type": "CNAME",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [ { "Fn::Join": [".",
+          [{"Ref":"DomainPrefix"},
+           {"Ref":"DomainName"},
+           "s3-website",
+           {"Ref":"AWS::Region"},
+           "amazonaws.com"]]}]
+      },
+      "Condition": "SubDomain"
+    },
+    "WWWRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Fn::If": [
+          "CreateZone",
+          {"Ref":"DatDomain"},
+          {"Ref": "ZoneId" }
+        ]},
+        "Name": { "Fn::If": [
+          "TopLevel",
+          { "Fn::Join": [".", ["www", {"Ref":"DomainName"}, ""]]},
+          { "Fn::Join": [".", ["www", {"Ref":"DomainPrefix"}, {"Ref":"DomainName"}, ""]]}]},
+        "Type": "CNAME",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [{ "Fn::If": [
+          "TopLevel",
+          { "Fn::Join": [".", [{"Ref":"DomainName"}, ""]]},
+          { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}, ""]]}]}]
+      },
+      "Condition": "WithWWW"
+    },
+    "BlogRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Fn::If": [
+          "CreateZone",
+          {"Ref":"DatDomain"},
+          {"Ref": "ZoneId" }
+        ]},
+        "Name": { "Fn::If": [
+          "TopLevel",
+          { "Fn::Join": [".", ["blog", {"Ref":"DomainName"}, ""]]},
+          { "Fn::Join": [".", ["blog", {"Ref":"DomainPrefix"}, {"Ref":"DomainName"}, ""]]}]},
+        "Type": "CNAME",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": ["domains.tumblr.com"]
+      },
+      "Condition": "UseTumblr"
+    },
+    "GSVRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Fn::If": [
+          "CreateZone",
+          {"Ref":"DatDomain"},
+          {"Ref": "ZoneId" }
+        ]},
+        "Name": { "Fn::Join": [ ".", [{ "Ref": "DomainName" }, ""]]},
+        "Type": "TXT",
+        "TTL": {"Ref": "TTL"},
+        "ResourceRecords": [{"Ref": "GoogleSiteVerificationCode"}]
+      },
+      "Condition": "GSVCode"
+    }
+  },
+  "Outputs": {
+    "ZoneId": {
+      "Description": "The Zone ID of the Created Zone",
+      "Value": { "Fn::If": [
+        "CreateZone",
+        {"Ref":"DatDomain"},
+        {"Ref": "ZoneId"}]}
+    }
+  }
+}
