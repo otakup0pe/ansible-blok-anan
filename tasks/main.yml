@@ -4,14 +4,14 @@
     bucket: "{{cloudformation_bucket}}-{{cloudformation_region}}"
     mode: "create"
     region: "{{cloudformation_region}}"
-- name: "upload cloudformation template"
+- name: "upload template {{cloudformation_stack}}"
   s3:
     bucket: "{{cloudformation_bucket}}-{{cloudformation_region}}"
     mode: "put"
     object: "/{{cloudformation_stack}}-{{cloudformation_template|basename}}"
     src: "{{cloudformation_template}}"
     region: "{{cloudformation_region}}"
-- name: "create template {{cloudformation_stack}}"
+- name: "create stack {{cloudformation_stack}}"
   cloudformation:
     disable_rollback: "{{cloudformation_disable_rollback}}"
     region: "{{cloudformation_region}}"
