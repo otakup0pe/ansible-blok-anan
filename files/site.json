@@ -3,11 +3,16 @@
   "Description": "Manifest an World Wide Web Site",
   "Mappings": {
     "RegionZones": {
-      "us-east-1": { "ZoneId": "Z3AQBSTGFYJSTF" },
-      "us-west-1": { "ZoneId": "Z2F56UZL2M1ACD" },
-      "us-west-2": { "ZoneId": "Z3BJ6K6RIION7M" },
-      "eu-central-1": { "ZoneId": "Z21DNDUVLTQW6Q" },
-      "ap-southeast-1": { "ZoneId": "Z3O0J2DXBE1FTB" }
+      "us-east-1": { "ZoneId": "Z3AQBSTGFYJSTF",
+                     "Endpoint": "s3-website-us-east-1.amazonaws.com" },
+      "us-west-1": { "ZoneId": "Z2F56UZL2M1ACD",
+                     "Endpoint": "s3-website-us-west-1.amazonaws.com"},
+      "us-west-2": { "ZoneId": "Z3BJ6K6RIION7M",
+                     "Endpoint": "s3-website-us-west-2.amazonaws.com"},
+      "eu-central-1": { "ZoneId": "Z21DNDUVLTQW6Q",
+                        "Endpoint": "s3-website.eu-central-1.amazonaws.com" },
+      "ap-southeast-1": { "ZoneId": "Z3O0J2DXBE1FTB",
+                          "Endpoint": "s3-website-ap-southeast-1.amazonaws.com"}
     }
   },
   "Parameters": {
@@ -153,10 +158,10 @@
           {"Ref": "ZoneId" }
         ]},
         "AliasTarget": {
-          "DNSName": {"Fn::Join": [".", ["s3-website", {"Ref":"AWS::Region"}, "amazonaws.com"]]},
+          "DNSName": {"Fn::FindInMap": ["RegionZones", {"Ref": "AWS::Region"}, "Endpoint"]},
           "HostedZoneId": {"Fn::FindInMap": ["RegionZones", {"Ref":"AWS::Region"}, "ZoneId"]}
         },
-        "Name": { "Fn::Join": ["", [{"Ref": "DomainName"}]]},
+        "Name": { "Fn::Join": [".", [{"Ref": "DomainName"}, ""]]},
         "Type": "A"
       },
       "Condition": "TopLevel"
