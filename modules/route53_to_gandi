@@ -6,6 +6,15 @@ from ansible.module_utils.urls import *
 import boto.route53, xmlrpclib, os, sys
 from optparse import OptionParser
 
+def changed(old, new):
+    for ns in old:
+        if str(ns) not in new:
+            return True
+    for ns in new:
+        if str(ns) not in  old:
+            return True
+    return False
+
 def convert(opt):
     zone_id = opt.get('zone_id', None)
     aws_key = opt.get('aws_key', None)
@@ -28,12 +37,15 @@ def convert(opt):
     else:
         zone = route53.get_hosted_zone_by_name(domain)
 
+    existing = api.domain.info(gandi_key, domain)['nameservers']
     ns = []
+
     for host in zone['GetHostedZoneResponse']['DelegationSet']['NameServers']:
         ns.append(host.rstrip('.'))
 
     api.domain.nameservers.set(gandi_key, domain, ns)
 
+    return changed(existing, ns)
 
 def main():
     mod = AnsibleModule(

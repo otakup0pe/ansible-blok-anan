@@ -14,7 +14,7 @@
     "TTL": {
       "Description": "The TTL to be used for Domains",
       "Type": "Number",
-      "Default": 1800
+      "Default": "1800"
     },
     "WWWAlias": {
       "Description": "Whether or not to create a WWW alias for the Tumblr Site",

@@ -58,7 +58,7 @@
           { "Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}]},
         "PolicyDocument": {
           "Statement": [
-            {% for ip in restrict_site_ips %}
+            {% for ip in restrict_site_ips|default([]) %}
             {
               "Sid": "IPAllow",
               "Effect": "Allow",

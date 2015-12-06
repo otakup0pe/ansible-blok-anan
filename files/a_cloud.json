@@ -1,0 +1,58 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Manifest an cloud",
+  "Parameters": {
+    "NetworkMask": {
+      "Description": "The full encompasing network for the VPC. Each of the private and public subnets must fit within this network. It cannot conflict or overlap with any VPC you may wish to peer with.",
+      "Type": "String",
+      "Default": "10.0.0.0/16"
+    }
+  },
+  "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": { "Ref": "NetworkMask" },
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true"
+      }
+    },
+    "Internets": {
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "Gateway": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "InternetGatewayId": { "Ref": "Internets" }
+      }
+    },
+    "NATClients": {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "NAT Client outbound access",
+        "VpcId": { "Ref": "VPCId" },
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": { "Ref": "NetworkMask" }
+          }          
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "VPCId": { 
+      "Value": { "Ref": "VPC" },
+      "Description": "VPC ID"
+    },
+    "GWId": { 
+      "Value": { "Ref": "Gateway" },
+      "Description": "Gateway ID"
+    },
+    "NATClientsSGId": {
+      "Value": { "Ref": "NATClientsSG" },
+      "Desription": "nat client sg"
+    }
+  }
+}

@@ -42,6 +42,11 @@
       "AllowedValues": [ "yes", "no" ],
       "Default": "no"
     },
+    "RedirectTo": {
+      "Description": "Whether or not to redirect the various created web pages",
+      "Type": "String",
+      "Default": ""
+    },
     "WWWAlias": {
       "Description": "Whether or not to create a WWW alias for this World Wide Web Site",
       "Type": "String",
@@ -61,7 +66,7 @@
     "TTL": {
       "Description": "The TTL to be used for the World Wide Web Site",
       "Type": "Number",
-      "Default": 1800
+      "Default": "1800"
     },
     "PublicAccess": {
       "Description": "Whether or not this World Wide Web Site is publically accessible",
@@ -81,8 +86,25 @@
     "SubDomain": { "Fn::Not": [ { "Condition": "TopLevel" } ] },
     "UseTumblr": { "Fn::Equals": [{"Ref": "TumblrBlog"}, "yes"]},
     "IsPublic": { "Fn::Equals": [{"Ref":"PublicAccess"}, "yes"]},
+    "IsRedirect": { "Fn::Not": [{"Fn::Equals": [{"Ref":"RedirectTo"}, ""]}]},
     "GSVCode": { "Fn::Not": [{ "Fn::Equals": [{"Ref":"GoogleSiteVerificationCode"}, ""]}] },
-    "CreateZone": { "Fn::Equals": [{"Ref":"CreateZone"}, "yes"]}
+    "CreateZone": { "Fn::Equals": [{"Ref":"CreateZone"}, "yes"]},
+    "TopRedirect": { "Fn::And": [
+      { "Condition": "IsRedirect" },
+      { "Condition": "TopLevel" }
+    ]},
+    "SubRedirect": { "Fn::And": [
+      { "Condition": "IsRedirect" },
+      { "Condition": "SubDomain" }
+    ]},
+    "TopHosted": { "Fn::And": [
+      { "Fn::Not": [ { "Condition": "IsRedirect" }]},
+      { "Condition": "TopLevel" }
+    ]},
+    "SubHosted": { "Fn::And": [
+      { "Fn::Not": [ { "Condition": "IsRedirect" }]},
+      { "Condition": "SubDomain" }
+    ]}
   },
   "Resources": {
     "DatDomain": {
@@ -106,7 +128,20 @@
           "BucketOwnerFullControl"
         ]}
       },
-      "Condition": "TopLevel"
+      "Condition": "TopHosted"
+    },
+    "TopRedirect": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {"Ref": "DomainName"},
+        "WebsiteConfiguration": {
+          "RedirectAllRequestsTo": {
+            "HostName": {"Ref": "RedirectTo"}
+          }
+        },
+        "AccessControl": "PublicRead"
+      },
+      "Condition": "TopRedirect"
     },
     "SubdomainBucket": {
       "Type": "AWS::S3::Bucket",
@@ -126,7 +161,24 @@
           "BucketOwnerFullControl"
         ]}
       },
-      "Condition": "SubDomain"
+      "Condition": "SubHosted"
+    },
+    "SubdomainRedirect": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Fn::Join": [ ".",
+          [ 
+            {"Ref": "DomainPrefix"},
+            {"Ref": "DomainName"}
+          ]]},
+        "WebsiteConfiguration": {
+          "RedirectAllRequestsTo": {
+            "HostName": {"Ref": "RedirectTo"}
+          }
+        },
+        "AccessControl": "PublicRead"
+      },
+      "Condition": "SubRedirect"
     },
     "WWWBucket": {
       "Type": "AWS::S3::Bucket",
@@ -139,9 +191,13 @@
         "WebsiteConfiguration": {
           "RedirectAllRequestsTo": {
             "HostName": { "Fn::If": [
-              "TopLevel",
-              {"Ref": "DomainName"},
-              {"Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}
+              "IsRedirect",
+              {"Ref":"RedirectTo"},
+              { "Fn::If": [
+                "TopHosted",
+                {"Ref": "DomainName"},
+                {"Fn::Join": [".", [{"Ref":"DomainPrefix"}, {"Ref":"DomainName"}]]}
+              ]}
             ]}
           }
         },

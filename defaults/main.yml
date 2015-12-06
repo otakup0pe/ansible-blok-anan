@@ -2,3 +2,11 @@ cloudformation_bucket: "example.com"
 cloudformation_region: "us-east-1"
 cloudformation_scratch: "/tmp"
 cloudformation_disable_rollback: false
+
+# bespoke or network
+blok_anan_action: "bespoke"
+
+# present or absent (or uploaded, i guess)
+blok_anan_state: "present"
+
+restrict_site_ips: []
