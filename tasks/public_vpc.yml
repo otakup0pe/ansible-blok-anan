@@ -1,0 +1,27 @@
+- fail:
+    msg: "cloud_name is not set"
+  when: cloud_name|default(false) == false
+- fail:
+    msg: "cloud_network is not set"
+  when: cloud_name|default(false) == false
+- fail:
+    msg: "cloud_zone is not set"
+  when: cloud_zone|default(false) == false
+- include: "cf.yml"
+  cloudformation_template: "vpc.yml"
+  cloudformation_stack: "{{cloud_name}}-vpc"
+  cloudformation_parameters:
+    cloud_network: "{{cloud_network}}"
+- name: "determine vpc and gw id"
+  set_fact:
+    vpc_id: "{{lookup('cloudformation_output', cloudformation_region + '/{{cloud_name}}-vpc/VPCId')}}"
+    gw_id: "{{lookup('cloudformation_output', cloudformation_region + '/{{cloud_name}}-vpc/GWId')}}"
+  when: blok_anan_state == 'present'
+- include: "cf.yml"
+  cloudformation_template: "public_subnet.yml"
+  cloudformation_stack: "{{cloud_name}}-subnet"
+  cloudformation_parameters:
+    VPCId: "{{vpc_id}}"
+    GWId: "{{gw_id}}"
+    NetworkRange: "{{cloud_network}}"
+    AZ: "{{cloud_zone}}"

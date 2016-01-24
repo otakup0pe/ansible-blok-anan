@@ -1,9 +1,9 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Manifest an cloud",
+  "Description": "Manifest a VPC",
   "Parameters": {
     "NetworkMask": {
-      "Description": "The full encompasing network for the VPC. Each of the private and public subnets must fit within this network. It cannot conflict or overlap with any VPC you may wish to peer with.",
+      "Description": "The full encompasing network for the VPC. All subnets must fit within this network. It cannot conflict or overlap with any VPC you may wish to peer with.",
       "Type": "String",
       "Default": "10.0.0.0/16"
     }
@@ -26,19 +26,6 @@
         "VpcId": { "Ref": "VPC" },
         "InternetGatewayId": { "Ref": "Internets" }
       }
-    },
-    "NATClients": {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "NAT Client outbound access",
-        "VpcId": { "Ref": "VPCId" },
-        "SecurityGroupEgress": [
-          {
-            "IpProtocol": "-1",
-            "CidrIp": { "Ref": "NetworkMask" }
-          }          
-        ]
-      }
     }
   },
   "Outputs": {
@@ -47,12 +34,8 @@
       "Description": "VPC ID"
     },
     "GWId": { 
-      "Value": { "Ref": "Gateway" },
+      "Value": { "Ref": "Internets" },
       "Description": "Gateway ID"
-    },
-    "NATClientsSGId": {
-      "Value": { "Ref": "NATClientsSG" },
-      "Desription": "nat client sg"
     }
   }
 }
