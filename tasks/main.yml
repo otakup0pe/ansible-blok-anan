@@ -6,3 +6,5 @@
     region: "{{cloudformation_region}}"
 - include: "cf.yml"
   when: blok_anan_action == "bespoke"
+- include: "ses_dns.yml"
+  when: blok_anan_action == "ses_dns"
