@@ -10,3 +10,4 @@ blok_anan_action: "bespoke"
 blok_anan_state: "present"
 
 restrict_site_ips: []
+aws_ses_dkim: []
