@@ -6,13 +6,16 @@
     ttl: "{{ttl|default(86400)}}"
     value: '"{{aws_ses_verification}}"'
     command: create
+    overwrite: yes
   when: blok_anan_state == "present"
 - name: "add dkim entries"
   route53:
     zone: "{{domain_name}}"
     record: "{{item.src}}.{{domain_name}}"
+    ttl: "{{ttl|default(86400)}}"
     type: "CNAME"
     value: '"{{item.dest}}"'
     command: create
+    overwrite: yes
   with_items: "{{aws_ses_dkim}}"
   when: blok_anan_state == "present"
