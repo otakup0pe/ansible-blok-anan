@@ -76,6 +76,8 @@ This will create a simple stack comprised of S3 buckets and Route53 resource rec
 * `PublicAccess` is used to lock down the bucket. Note that if you do so, a S3 bucket policy will need to be created (see `access` template).
 * `CreateDomain` is used to determine whether or not we are actually creating the Route53 zone. If this is set then `ZoneId` will be ignored. This defaults to `no`.
 * `ZoneId` is used if we are not creating the domain. If `CreateDomain` is _no_ then this must be set.
+* `RedirectTo` is used to have the S3 bucket redirect to another site.
+* `CNAMETo` is used to have a CNAME redirect. Note this will only work if there is a `DomainPrefix` set - you cannot use a CNAME otherwise.
 
 ## access
 
