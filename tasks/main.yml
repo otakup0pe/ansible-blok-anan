@@ -8,3 +8,5 @@
   when: blok_anan_action == "bespoke"
 - include: "ses_dns.yml"
   when: blok_anan_action == "ses_dns"
+- include: "gandi_ssl_dns.yml"
+  when: blok_anan_action == "gandi_ssl_dns"

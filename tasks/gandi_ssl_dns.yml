@@ -1,0 +1,9 @@
+- name: "add gandi dns verification entry"
+  route53:
+    zone: "{{item.zone}}"
+    record: "{{item.mine}}.{{item.domain}}.{{item.zone}}"
+    value: "{{item.theirs}}.comodoca.com"
+    type: "CNAME"
+    ttl: "10800"
+    command: create
+  with_items: "{{verifications}}"
