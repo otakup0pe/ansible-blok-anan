@@ -6,4 +6,4 @@
     type: "CNAME"
     ttl: "10800"
     command: create
-  with_items: "{{verifications}}"
+  with_items: "{{verifications|default([])}}"
